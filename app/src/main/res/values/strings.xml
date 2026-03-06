@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">garitawatch</string>
+    <string name="manage_ports">Manage Ports</string>
+    <string name="refresh">Refresh</string>
+    <string name="add_ports">Add Ports</string>
+    <string name="last_updated">Last updated: %1$s</string>
+    <string name="no_ports_monitored">No ports monitored yet</string>
+    <string name="explore_ports">Explore Ports</string>
+    <string name="find_ports">Find Ports</string>
+    <string name="search_placeholder">Search by port or crossing name</string>
+    <string name="vehicles">Vehicles</string>
+    <string name="pedestrians">Pedestrians</string>
+    <string name="no_results">No ports found</string>
+    <string name="minutes_abbreviation">%1$d min</string>
+    <string name="lanes_open_text">%1$d lanes open</string>
+    <string name="back">Back</string>
+</resources>

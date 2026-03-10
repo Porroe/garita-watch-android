@@ -14,4 +14,6 @@
     <string name="minutes_abbreviation">%1$d min</string>
     <string name="lanes_open_text">%1$d lanes open</string>
     <string name="back">Back</string>
+    <string name="port_closed">Port Closed</string>
+    <string name="closed">Closed</string>
 </resources>

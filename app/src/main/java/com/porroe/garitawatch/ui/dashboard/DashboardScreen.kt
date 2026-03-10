@@ -100,6 +100,8 @@ fun DashboardScreen(
 
 @Composable
 fun PortCard(port: BorderWaitTime) {
+    val isPortClosed = port.portStatus.equals("Closed", ignoreCase = true)
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp), // More expressive corners
@@ -121,12 +123,21 @@ fun PortCard(port: BorderWaitTime) {
             
             Spacer(modifier = Modifier.height(20.dp))
             
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                port.passengerLanes.forEach { lane ->
-                    LaneRow(lane, stringResource(R.string.vehicles))
-                }
-                port.pedestrianLanes.forEach { lane ->
-                    LaneRow(lane, stringResource(R.string.pedestrians))
+            if (isPortClosed) {
+                Text(
+                    text = stringResource(R.string.port_closed),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = WaitTimeRed
+                )
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    port.passengerLanes.forEach { lane ->
+                        LaneRow(lane, stringResource(R.string.vehicles))
+                    }
+                    port.pedestrianLanes.forEach { lane ->
+                        LaneRow(lane, stringResource(R.string.pedestrians))
+                    }
                 }
             }
         }
@@ -135,7 +146,9 @@ fun PortCard(port: BorderWaitTime) {
 
 @Composable
 fun LaneRow(lane: LaneDetails, category: String) {
+    val isClosed = lane.operationalStatus.equals("Closed", ignoreCase = true)
     val indicatorColor = when {
+        isClosed -> Color.Gray
         lane.delayMinutes <= 30 -> WaitTimeGreen
         lane.delayMinutes <= 60 -> WaitTimeYellow
         else -> WaitTimeRed
@@ -158,14 +171,16 @@ fun LaneRow(lane: LaneDetails, category: String) {
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold
             )
-            Text(
-                text = stringResource(R.string.lanes_open_text, lane.lanesOpen),
-                style = MaterialTheme.typography.bodySmall
-            )
+            if (!isClosed) {
+                Text(
+                    text = stringResource(R.string.lanes_open_text, lane.lanesOpen),
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
         }
         Text(
-            text = stringResource(R.string.minutes_abbreviation, lane.delayMinutes),
-            style = MaterialTheme.typography.titleLarge,
+            text = if (isClosed) stringResource(R.string.port_closed) else stringResource(R.string.minutes_abbreviation, lane.delayMinutes),
+            style = if (isClosed) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Black,
             color = indicatorColor
         )
@@ -215,10 +230,48 @@ fun DashboardPreview() {
             ),
             commercialLanes = emptyList()
         )
-        
+
+        val closedPort = BorderWaitTime(
+            portNumber = "2",
+            portName = "Otay Mesa",
+            crossingName = "Otay Mesa",
+            border = "Mexico",
+            portStatus = "Closed",
+            lastUpdate = "2023-10-27 10:00 AM",
+            passengerLanes = emptyList(),
+            pedestrianLanes = emptyList(),
+            commercialLanes = emptyList()
+        )
+
+        val partiallyClosedPort = BorderWaitTime(
+            portNumber = "3",
+            portName = "Tecate",
+            crossingName = "Tecate",
+            border = "Mexico",
+            portStatus = "Open",
+            lastUpdate = "2023-10-27 10:00 AM",
+            passengerLanes = listOf(
+                LaneDetails(LaneType.STANDARD, "10:00 AM", "Closed", 0, 0),
+                LaneDetails(LaneType.READY, "10:00 AM", "Open", 30, 4)
+            ),
+            pedestrianLanes = listOf(
+                LaneDetails(LaneType.STANDARD, "10:00 AM", "Open", 10, 2)
+            ),
+            commercialLanes = emptyList()
+        )
+
+
+
         Scaffold { padding ->
-            Column(modifier = Modifier.padding(padding).padding(16.dp)) {
+            Column(
+                modifier = Modifier
+                    .padding(padding)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
                 PortCard(mockPort)
+                PortCard(partiallyClosedPort)
+                PortCard(closedPort)
             }
         }
     }

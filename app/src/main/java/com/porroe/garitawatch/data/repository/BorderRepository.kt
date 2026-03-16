@@ -34,7 +34,15 @@ class BorderRepository @Inject constructor(
         try {
             val response = apiService.getBorderWaitTimes()
             val normalized = response.ports?.map { WaitTimeNormalizer.normalize(it) } ?: emptyList()
-            _borderData.value = normalized
+            
+            // Filter out ports where every lane has no usable wait-time data (N/A)
+            val filtered = normalized.filter { port ->
+                port.passengerLanes.any { it.delayMinutes != null } ||
+                port.pedestrianLanes.any { it.delayMinutes != null } ||
+                port.commercialLanes.any { it.delayMinutes != null }
+            }
+            
+            _borderData.value = filtered
             _lastUpdatedTime.value = response.lastUpdatedTime ?: ""
             _lastUpdatedDate.value = response.lastUpdatedDate ?: ""
         } catch (e: Exception) {

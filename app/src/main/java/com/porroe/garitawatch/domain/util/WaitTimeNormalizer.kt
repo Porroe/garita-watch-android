@@ -57,10 +57,11 @@ object WaitTimeNormalizer {
 
     /**
      * Normalizes wait time strings like "30 min", "2 hrs 15 min", "N/A" to minutes.
+     * Returns null if the value is "N/A", empty, or null.
      */
-    fun parseWaitTime(delayStr: String?): Int {
-        if (delayStr == null || delayStr.isEmpty() || delayStr.equals("N/A", ignoreCase = true)) {
-            return 0
+    fun parseWaitTime(delayStr: String?): Int? {
+        if (delayStr == null || delayStr.isBlank() || delayStr.equals("N/A", ignoreCase = true)) {
+            return null
         }
 
         val lowerStr = delayStr.lowercase()
@@ -83,7 +84,9 @@ object WaitTimeNormalizer {
 
         // If no matches but it's just a number
         if (hourMatch == null && minMatch == null) {
-            totalMinutes = lowerStr.filter { it.isDigit() }.toIntOrNull() ?: 0
+            val digits = lowerStr.filter { it.isDigit() }
+            if (digits.isEmpty()) return null
+            totalMinutes = digits.toIntOrNull() ?: 0
         }
 
         return totalMinutes

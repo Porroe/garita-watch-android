@@ -22,4 +22,5 @@
     <string name="status_closed">CLOSED</string>
     <string name="status_open">OPEN</string>
     <string name="current">current</string>
+    <string name="no_lane_data">No lane data currently available</string>
 </resources>

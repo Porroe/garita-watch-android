@@ -148,47 +148,76 @@ fun PortCard(port: BorderWaitTime) {
                     color = Color(0xFF94A3B8)
                 )
             } else {
-                // Find representative wait times
-                val vehicleWait = port.passengerLanes.firstOrNull { it.type == LaneType.STANDARD }?.delayMinutes
-                val sentriWait = port.passengerLanes.firstOrNull { it.type == LaneType.SENTRI_NEXUS }?.delayMinutes
-                val readyWait = port.passengerLanes.firstOrNull { it.type == LaneType.READY }?.delayMinutes
-                val pedestrianWait = port.pedestrianLanes.firstOrNull { it.type == LaneType.STANDARD }?.delayMinutes
+                // Collect and filter valid lanes
+                val vehicleLane = port.passengerLanes.find { it.type == LaneType.STANDARD }
+                val sentriLane = port.passengerLanes.find { it.type == LaneType.SENTRI_NEXUS }
+                val readyLane = port.passengerLanes.find { it.type == LaneType.READY }
+                val pedestrianLane = port.pedestrianLanes.find { it.type == LaneType.STANDARD }
+
+                val displayedLanes = mutableListOf<Pair<LaneDetails, @Composable () -> Unit>>()
+                
+                vehicleLane?.delayMinutes?.let { waitTime ->
+                    displayedLanes.add(vehicleLane to {
+                        LaneSummaryRow(
+                            icon = Icons.Default.DirectionsCar,
+                            label = stringResource(R.string.vehicle_label),
+                            waitTime = waitTime,
+                            isClosed = vehicleLane.operationalStatus.equals("Closed", ignoreCase = true)
+                        )
+                    })
+                }
+                
+                sentriLane?.delayMinutes?.let { waitTime ->
+                    displayedLanes.add(sentriLane to {
+                        LaneSummaryRow(
+                            icon = Icons.Default.Verified,
+                            label = "SENTRI",
+                            waitTime = waitTime,
+                            isClosed = sentriLane.operationalStatus.equals("Closed", ignoreCase = true)
+                        )
+                    })
+                }
+                
+                readyLane?.delayMinutes?.let { waitTime ->
+                    displayedLanes.add(readyLane to {
+                        LaneSummaryRow(
+                            icon = Icons.Default.Bolt,
+                            label = "READY",
+                            waitTime = waitTime,
+                            isClosed = readyLane.operationalStatus.equals("Closed", ignoreCase = true)
+                        )
+                    })
+                }
+                
+                pedestrianLane?.delayMinutes?.let { waitTime ->
+                    displayedLanes.add(pedestrianLane to {
+                        LaneSummaryRow(
+                            icon = Icons.Default.DirectionsWalk,
+                            label = stringResource(R.string.pedestrian_label),
+                            waitTime = waitTime,
+                            isClosed = pedestrianLane.operationalStatus.equals("Closed", ignoreCase = true)
+                        )
+                    })
+                }
 
                 Spacer(modifier = Modifier.height(35.dp))
                 
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(18.dp)
-                ) {
-                    val isVehicleClosed = port.passengerLanes.all { it.type == LaneType.STANDARD && it.operationalStatus.equals("Closed", ignoreCase = true) }
-                    val isPedestrianClosed = port.pedestrianLanes.all { it.operationalStatus.equals("Closed", ignoreCase = true) }
-                    val isSentriClosed = port.passengerLanes.none { it.type == LaneType.SENTRI_NEXUS && !it.operationalStatus.equals("Closed", ignoreCase = true) }
-                    val isReadyClosed = port.passengerLanes.none { it.type == LaneType.READY && !it.operationalStatus.equals("Closed", ignoreCase = true) }
-
-                    LaneSummaryRow(
-                        icon = Icons.Default.DirectionsCar,
-                        label = stringResource(R.string.vehicle_label),
-                        waitTime = if (isVehicleClosed) null else vehicleWait,
-                        isClosed = isVehicleClosed
+                if (displayedLanes.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.no_lane_data),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF94A3B8)
                     )
-                    LaneSummaryRow(
-                        icon = Icons.Default.Verified,
-                        label = "SENTRI",
-                        waitTime = if (isSentriClosed) null else sentriWait,
-                        isClosed = isSentriClosed
-                    )
-                    LaneSummaryRow(
-                        icon = Icons.Default.Bolt,
-                        label = "READY",
-                        waitTime = if (isReadyClosed) null else readyWait,
-                        isClosed = isReadyClosed
-                    )
-                    LaneSummaryRow(
-                        icon = Icons.Default.DirectionsWalk,
-                        label = stringResource(R.string.pedestrian_label),
-                        waitTime = if (isPedestrianClosed) null else pedestrianWait,
-                        isClosed = isPedestrianClosed
-                    )
+                } else {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(18.dp)
+                    ) {
+                        displayedLanes.forEach { (_, composable) ->
+                            composable()
+                        }
+                    }
                 }
             }
         }

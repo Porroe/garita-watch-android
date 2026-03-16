@@ -16,7 +16,7 @@ data class LaneDetails(
     val type: LaneType,
     val updateTime: String,
     val operationalStatus: String,
-    val delayMinutes: Int,
+    val delayMinutes: Int?,
     val lanesOpen: Int
 )
 

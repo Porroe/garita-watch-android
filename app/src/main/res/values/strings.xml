@@ -10,10 +10,16 @@
     <string name="search_placeholder">Search by port or crossing name</string>
     <string name="vehicles">Vehicles</string>
     <string name="pedestrians">Pedestrians</string>
+    <string name="vehicle_label">Vehicle</string>
+    <string name="pedestrian_label">Pedestrian</string>
     <string name="no_results">No ports found</string>
     <string name="minutes_abbreviation">%1$d min</string>
+    <string name="wait_time_format">%1$d min</string>
+    <string name="wait_time_na">N/A</string>
     <string name="lanes_open_text">%1$d lanes open</string>
     <string name="back">Back</string>
     <string name="port_closed">Port Closed</string>
-    <string name="closed">Closed</string>
+    <string name="status_closed">CLOSED</string>
+    <string name="status_open">OPEN</string>
+    <string name="current">current</string>
 </resources>

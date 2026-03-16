@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Locale
 import javax.inject.Inject
 
 data class DashboardUiState(
@@ -23,18 +25,35 @@ class DashboardViewModel @Inject constructor(
     private val repository: BorderRepository
 ) : ViewModel() {
 
+    private val inputDateFormat = SimpleDateFormat("yyyy-M-dd", Locale.US)
+    private val outputDateFormat = SimpleDateFormat("MM/dd/yyyy", Locale.US)
+
     val uiState: StateFlow<DashboardUiState> = combine(
         repository.borderData,
         repository.getMonitoredPorts(),
-        repository.isRefreshing
-    ) { allData, monitoredEntities, isRefreshing ->
+        repository.isRefreshing,
+        repository.lastUpdatedTime,
+        repository.lastUpdatedDate
+    ) { allData, monitoredEntities, isRefreshing, lastTime, lastDate ->
         val monitoredPortNumbers = monitoredEntities.map { it.portNumber }.toSet()
         val monitoredData = allData.filter { it.portNumber in monitoredPortNumbers }
         
-        // Use the latest update time from monitored ports
-        val lastUpdated = monitoredData.map { it.lastUpdate }
-            .filter { it.isNotBlank() }
-            .firstOrNull() ?: "Never"
+        val formattedDate = try {
+            if (lastDate.isNotBlank()) {
+                val date = inputDateFormat.parse(lastDate)
+                if (date != null) outputDateFormat.format(date) else lastDate
+            } else lastDate
+        } catch (e: Exception) {
+            lastDate
+        }
+
+        val lastUpdated = if (lastTime.isNotBlank() && formattedDate.isNotBlank()) {
+            "$formattedDate $lastTime"
+        } else if (monitoredData.isNotEmpty()) {
+             monitoredData.firstOrNull()?.lastUpdate ?: "Never"
+        } else {
+            "Never"
+        }
 
         DashboardUiState(
             monitoredPorts = monitoredData,

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.porroe.garitawatch.data.local.entity.MonitoredPortEntity
 import com.porroe.garitawatch.data.repository.BorderRepository
 import com.porroe.garitawatch.domain.model.BorderWaitTime
+import com.porroe.garitawatch.domain.model.portSearchIndex
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -44,10 +45,24 @@ class SearchViewModel @Inject constructor(
         repository.isRefreshing
     ) { allData, monitoredEntities, filters, isRefreshing ->
         val monitoredNumbers = monitoredEntities.map { it.portNumber }.toSet()
+        val q = filters.query.lowercase()
         
         val filtered = allData.filter { port ->
-            val matchesQuery = port.portName.contains(filters.query, ignoreCase = true) ||
-                               port.crossingName.contains(filters.query, ignoreCase = true)
+            val matchesQuery = if (q.isBlank()) {
+                true
+            } else {
+                // Find keywords for this specific port
+                val portKeywords = portSearchIndex.find { 
+                    it.portName.equals(port.portName, ignoreCase = true) 
+                }?.keywords
+                
+                // If keywords exist, check if any match the query. 
+                // Fallback to basic port name/crossing name match if not indexed.
+                portKeywords?.any { it.contains(q) } ?: (
+                    port.portName.contains(q, ignoreCase = true) || 
+                    port.crossingName.contains(q, ignoreCase = true)
+                )
+            }
             
             val hasVehicle = port.passengerLanes.isNotEmpty() || port.commercialLanes.isNotEmpty()
             val hasPedestrian = port.pedestrianLanes.isNotEmpty()

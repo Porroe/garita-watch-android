@@ -20,6 +20,12 @@ class BorderRepository @Inject constructor(
     private val _borderData = MutableStateFlow<List<BorderWaitTime>>(emptyList())
     val borderData: StateFlow<List<BorderWaitTime>> = _borderData.asStateFlow()
 
+    private val _lastUpdatedTime = MutableStateFlow("")
+    val lastUpdatedTime: StateFlow<String> = _lastUpdatedTime.asStateFlow()
+
+    private val _lastUpdatedDate = MutableStateFlow("")
+    val lastUpdatedDate: StateFlow<String> = _lastUpdatedDate.asStateFlow()
+
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
@@ -29,6 +35,8 @@ class BorderRepository @Inject constructor(
             val response = apiService.getBorderWaitTimes()
             val normalized = response.ports?.map { WaitTimeNormalizer.normalize(it) } ?: emptyList()
             _borderData.value = normalized
+            _lastUpdatedTime.value = response.lastUpdatedTime ?: ""
+            _lastUpdatedDate.value = response.lastUpdatedDate ?: ""
         } catch (e: Exception) {
             e.printStackTrace()
             // Handle error (e.g., expose error state)

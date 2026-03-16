@@ -56,3 +56,10 @@ val onSurfaceDark = Color(0xFFE2E2E9)
 val WaitTimeGreen = Color(0xFF4CAF50)
 val WaitTimeYellow = Color(0xFFFFC107)
 val WaitTimeRed = Color(0xFFF44336)
+
+// UI Design colors
+val CardBackgroundDark = Color(0xFF1A233A)
+val StatusOpenBorder = Color(0xFF4CAF50)
+val StatusOpenBackground = Color(0xFF1B2E2A)
+val StatusClosedBorder = Color(0xFFF44336)
+val StatusClosedBackground = Color(0xFF2E1B1B)

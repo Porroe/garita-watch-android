@@ -52,7 +52,7 @@ fun DashboardScreen(
                         Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.refresh))
                     }
                     IconButton(onClick = onNavigateToSearch) {
-                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.manage_ports))
+                        Icon(Icons.Default.Search, contentDescription = stringResource(R.string.find_ports))
                     }
                 }
             )

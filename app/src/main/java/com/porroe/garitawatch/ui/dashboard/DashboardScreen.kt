@@ -107,12 +107,6 @@ fun DashboardScreen(
 fun PortCard(port: BorderWaitTime) {
     val isPortClosed = port.portStatus.equals("Closed", ignoreCase = true)
     
-    // Find representative wait times
-    val vehicleWait = port.passengerLanes.firstOrNull { it.type == LaneType.STANDARD }?.delayMinutes
-    val sentriWait = port.passengerLanes.firstOrNull { it.type == LaneType.SENTRI_NEXUS }?.delayMinutes
-    val readyWait = port.passengerLanes.firstOrNull { it.type == LaneType.READY }?.delayMinutes
-    val pedestrianWait = port.pedestrianLanes.firstOrNull { it.type == LaneType.STANDARD }?.delayMinutes
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(35.dp),
@@ -145,41 +139,57 @@ fun PortCard(port: BorderWaitTime) {
                 StatusBadge(isOpen = !isPortClosed)
             }
             
-            Spacer(modifier = Modifier.height(35.dp))
-            
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(18.dp)
-            ) {
-                val isVehicleClosed = isPortClosed || port.passengerLanes.all { it.type == LaneType.STANDARD && it.operationalStatus.equals("Closed", ignoreCase = true) }
-                val isPedestrianClosed = isPortClosed || port.pedestrianLanes.all { it.operationalStatus.equals("Closed", ignoreCase = true) }
-                val isSentriClosed = isPortClosed || port.passengerLanes.none { it.type == LaneType.SENTRI_NEXUS && !it.operationalStatus.equals("Closed", ignoreCase = true) }
-                val isReadyClosed = isPortClosed || port.passengerLanes.none { it.type == LaneType.READY && !it.operationalStatus.equals("Closed", ignoreCase = true) }
+            if (isPortClosed) {
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = stringResource(R.string.port_closed),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF94A3B8)
+                )
+            } else {
+                // Find representative wait times
+                val vehicleWait = port.passengerLanes.firstOrNull { it.type == LaneType.STANDARD }?.delayMinutes
+                val sentriWait = port.passengerLanes.firstOrNull { it.type == LaneType.SENTRI_NEXUS }?.delayMinutes
+                val readyWait = port.passengerLanes.firstOrNull { it.type == LaneType.READY }?.delayMinutes
+                val pedestrianWait = port.pedestrianLanes.firstOrNull { it.type == LaneType.STANDARD }?.delayMinutes
 
-                LaneSummaryRow(
-                    icon = Icons.Default.DirectionsCar,
-                    label = stringResource(R.string.vehicle_label),
-                    waitTime = if (isVehicleClosed) null else vehicleWait,
-                    isClosed = isVehicleClosed
-                )
-                LaneSummaryRow(
-                    icon = Icons.Default.Verified,
-                    label = "SENTRI",
-                    waitTime = if (isSentriClosed) null else sentriWait,
-                    isClosed = isSentriClosed
-                )
-                LaneSummaryRow(
-                    icon = Icons.Default.Bolt,
-                    label = "READY",
-                    waitTime = if (isReadyClosed) null else readyWait,
-                    isClosed = isReadyClosed
-                )
-                LaneSummaryRow(
-                    icon = Icons.Default.DirectionsWalk,
-                    label = stringResource(R.string.pedestrian_label),
-                    waitTime = if (isPedestrianClosed) null else pedestrianWait,
-                    isClosed = isPedestrianClosed
-                )
+                Spacer(modifier = Modifier.height(35.dp))
+                
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(18.dp)
+                ) {
+                    val isVehicleClosed = port.passengerLanes.all { it.type == LaneType.STANDARD && it.operationalStatus.equals("Closed", ignoreCase = true) }
+                    val isPedestrianClosed = port.pedestrianLanes.all { it.operationalStatus.equals("Closed", ignoreCase = true) }
+                    val isSentriClosed = port.passengerLanes.none { it.type == LaneType.SENTRI_NEXUS && !it.operationalStatus.equals("Closed", ignoreCase = true) }
+                    val isReadyClosed = port.passengerLanes.none { it.type == LaneType.READY && !it.operationalStatus.equals("Closed", ignoreCase = true) }
+
+                    LaneSummaryRow(
+                        icon = Icons.Default.DirectionsCar,
+                        label = stringResource(R.string.vehicle_label),
+                        waitTime = if (isVehicleClosed) null else vehicleWait,
+                        isClosed = isVehicleClosed
+                    )
+                    LaneSummaryRow(
+                        icon = Icons.Default.Verified,
+                        label = "SENTRI",
+                        waitTime = if (isSentriClosed) null else sentriWait,
+                        isClosed = isSentriClosed
+                    )
+                    LaneSummaryRow(
+                        icon = Icons.Default.Bolt,
+                        label = "READY",
+                        waitTime = if (isReadyClosed) null else readyWait,
+                        isClosed = isReadyClosed
+                    )
+                    LaneSummaryRow(
+                        icon = Icons.Default.DirectionsWalk,
+                        label = stringResource(R.string.pedestrian_label),
+                        waitTime = if (isPedestrianClosed) null else pedestrianWait,
+                        isClosed = isPedestrianClosed
+                    )
+                }
             }
         }
     }
@@ -298,39 +308,24 @@ fun NewUiPreview() {
             lastUpdate = "10:00 AM",
             passengerLanes = listOf(
                 LaneDetails(LaneType.STANDARD, "", "Open", 10, 5),
-                LaneDetails(LaneType.SENTRI_NEXUS, "", "Open", 5, 2),
-                LaneDetails(LaneType.READY, "", "Open", 7, 3)
+                LaneDetails(LaneType.SENTRI_NEXUS, "", "Open", 45, 2),
+                LaneDetails(LaneType.READY, "", "Open", 65, 3)
             ),
             pedestrianLanes = listOf(LaneDetails(LaneType.STANDARD, "", "Open", 0, 2)),
             commercialLanes = emptyList()
         )
-        
-        val brownsville = BorderWaitTime(
-            portNumber = "2",
-            portName = "Brownsville",
-            crossingName = "B&M",
+
+        val tecate = BorderWaitTime(
+            portNumber = "4",
+            portName = "Tecate",
+            crossingName = "",
             border = "Mexico",
-            portStatus = "Open",
+            portStatus = "Closed",
             lastUpdate = "10:00 AM",
             passengerLanes = listOf(
-                LaneDetails(LaneType.STANDARD, "", "Open", 40, 5),
-                LaneDetails(LaneType.SENTRI_NEXUS, "", "Open", 35, 2),
-                LaneDetails(LaneType.READY, "", "Open", 38, 4)
-            ),
-            pedestrianLanes = listOf(LaneDetails(LaneType.STANDARD, "", "Open", 10, 2)),
-            commercialLanes = emptyList()
-        )
-        
-        val losIndios = BorderWaitTime(
-            portNumber = "3",
-            portName = "Brownsville",
-            crossingName = "Los Indios",
-            border = "Mexico",
-            portStatus = "Open",
-            lastUpdate = "10:00 AM",
-            passengerLanes = listOf(
-                LaneDetails(LaneType.STANDARD, "", "Open", 65, 5),
-                LaneDetails(LaneType.SENTRI_NEXUS, "", "Open", 45, 2)
+                LaneDetails(LaneType.STANDARD, "", "Closed", 0, 0),
+                LaneDetails(LaneType.SENTRI_NEXUS, "", "Closed", 0, 0),
+                LaneDetails(LaneType.READY, "", "Closed", 0, 0)
             ),
             pedestrianLanes = listOf(LaneDetails(LaneType.STANDARD, "", "Closed", 0, 0)),
             commercialLanes = emptyList()
@@ -342,8 +337,7 @@ fun NewUiPreview() {
                 verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
                 PortCard(andrade)
-                PortCard(brownsville)
-                PortCard(losIndios)
+                PortCard(tecate)
             }
         }
     }

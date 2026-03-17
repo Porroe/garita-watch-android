@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">garitawatch</string>
+    <string name="app_name">Garita Watch</string>
     <string name="manage_ports">Manage Ports</string>
     <string name="refresh">Refresh</string>
     <string name="add_ports">Add Ports</string>

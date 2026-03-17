@@ -1,5 +1,7 @@
 package com.porroe.garitawatch.ui.detail
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -24,6 +27,7 @@ import com.porroe.garitawatch.R
 import com.porroe.garitawatch.domain.model.BorderWaitTime
 import com.porroe.garitawatch.domain.model.LaneDetails
 import com.porroe.garitawatch.domain.model.LaneType
+import com.porroe.garitawatch.domain.util.PortNavigation
 import com.porroe.garitawatch.ui.dashboard.StatusBadge
 import com.porroe.garitawatch.ui.dashboard.getWaitTimeColor
 import com.porroe.garitawatch.ui.theme.GaritawatchTheme
@@ -52,6 +56,7 @@ private fun PortDetailScreen(
     onNavigateBack: () -> Unit,
     onToggleFavorite: () -> Unit
 ) {
+    val context = LocalContext.current
     val titleText = remember(port) {
         port?.let {
             if (it.crossingName.isNotEmpty() && it.crossingName != it.portName) {
@@ -87,6 +92,16 @@ private fun PortDetailScreen(
                 },
                 actions = {
                     if (port != null) {
+                        val mapsIntentUri = PortNavigation.getMapsIntent(port.portNumber)
+                        if (mapsIntentUri != null) {
+                            IconButton(onClick = {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(mapsIntentUri))
+                                context.startActivity(intent)
+                            }) {
+                                Icon(Icons.Default.Directions, contentDescription = "Navigate")
+                            }
+                        }
+                        
                         IconButton(onClick = onToggleFavorite) {
                             Icon(
                                 imageVector = if (isMonitored) Icons.Default.Star else Icons.Default.StarBorder,
@@ -329,7 +344,7 @@ fun LaneDetailRow(lane: LaneDetails) {
 fun PortDetailScreenPreview() {
     GaritawatchTheme(darkTheme = true) {
         val samplePort = BorderWaitTime(
-            portNumber = "1",
+            portNumber = "250401",
             portName = "San Ysidro",
             crossingName = "El Chaparral",
             border = "Mexico",

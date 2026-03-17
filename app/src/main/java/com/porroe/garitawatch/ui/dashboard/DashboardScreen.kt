@@ -106,7 +106,7 @@ fun DashboardScreen(
             )
         },
         floatingActionButton = {
-            if (uiState.monitoredPorts.isEmpty()) {
+            if (uiState.monitoredPorts.isEmpty() && !uiState.isLoading) {
                 ExtendedFloatingActionButton(
                     onClick = onNavigateToSearch,
                     icon = { Icon(Icons.Default.Add, null) },
@@ -115,48 +115,59 @@ fun DashboardScreen(
             }
         }
     ) { padding ->
-        PullToRefreshBox(
-            isRefreshing = uiState.isRefreshing,
-            onRefresh = { viewModel.refresh() },
-            state = pullToRefreshState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                if (uiState.monitoredPorts.isEmpty()) {
-                    EmptyDashboard(onNavigateToSearch)
-                } else {
-                    Text(
-                        text = stringResource(R.string.last_updated, uiState.lastUpdated),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontSize = 13.8.sp,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        color = Color(0xFF94A3B8)
-                    )
-                    
-                    LazyColumn(
-                        state = lazyListState,
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(18.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(uiState.monitoredPorts, key = { it.portNumber }) { port ->
-                            ReorderableItem(reorderableState, key = port.portNumber) { isDragging ->
-                                val elevation by animateDpAsState(if (isDragging) 12.dp else 0.dp)
-                                val scale by animateFloatAsState(if (isDragging) 1.02f else 1f)
-                                val alpha by animateFloatAsState(if (isDragging) 0.9f else 1f)
-                                
-                                PortCard(
-                                    port = port,
-                                    modifier = Modifier
-                                        .shadow(elevation, shape = RoundedCornerShape(35.dp))
-                                        .scale(scale)
-                                        .alpha(alpha)
-                                        .longPressDraggableHandle(),
-                                    isDragging = isDragging,
-                                    onClick = { onNavigateToDetail(port.portNumber) }
-                                )
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+            }
+        } else {
+            PullToRefreshBox(
+                isRefreshing = uiState.isRefreshing,
+                onRefresh = { viewModel.refresh() },
+                state = pullToRefreshState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    if (uiState.monitoredPorts.isEmpty()) {
+                        EmptyDashboard(onNavigateToSearch)
+                    } else {
+                        Text(
+                            text = stringResource(R.string.last_updated, uiState.lastUpdated),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontSize = 13.8.sp,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            color = Color(0xFF94A3B8)
+                        )
+                        
+                        LazyColumn(
+                            state = lazyListState,
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(18.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(uiState.monitoredPorts, key = { it.portNumber }) { port ->
+                                ReorderableItem(reorderableState, key = port.portNumber) { isDragging ->
+                                    val elevation by animateDpAsState(if (isDragging) 12.dp else 0.dp)
+                                    val scale by animateFloatAsState(if (isDragging) 1.02f else 1f)
+                                    val alpha by animateFloatAsState(if (isDragging) 0.9f else 1f)
+                                    
+                                    PortCard(
+                                        port = port,
+                                        modifier = Modifier
+                                            .shadow(elevation, shape = RoundedCornerShape(35.dp))
+                                            .scale(scale)
+                                            .alpha(alpha)
+                                            .longPressDraggableHandle(),
+                                        isDragging = isDragging,
+                                        onClick = { onNavigateToDetail(port.portNumber) }
+                                    )
+                                }
                             }
                         }
                     }

@@ -19,6 +19,7 @@ import javax.inject.Inject
 data class DashboardUiState(
     val monitoredPorts: List<BorderWaitTime> = emptyList(),
     val isRefreshing: Boolean = false,
+    val isLoading: Boolean = false,
     val lastUpdated: String = "",
     val shouldAskForLocation: Boolean = false
 )
@@ -34,6 +35,7 @@ class DashboardViewModel @Inject constructor(
     private val outputDateFormat = SimpleDateFormat("MM/dd/yyyy", Locale.US)
 
     private val _manualOrder = MutableStateFlow<List<String>?>(null)
+    private val _isLoading = MutableStateFlow(true)
 
     @Suppress("UNCHECKED_CAST")
     val uiState: StateFlow<DashboardUiState> = combine(
@@ -43,7 +45,8 @@ class DashboardViewModel @Inject constructor(
         repository.lastUpdatedTime,
         repository.lastUpdatedDate,
         userPreferencesRepository.hasAskedLocationPermission,
-        _manualOrder
+        _manualOrder,
+        _isLoading
     ) { args ->
         val allData = args[0] as List<BorderWaitTime>
         val monitoredEntities = args[1] as List<MonitoredPortEntity>
@@ -52,6 +55,7 @@ class DashboardViewModel @Inject constructor(
         val lastDate = args[4] as String
         val hasAskedLocation = args[5] as Boolean
         val manualOrder = args[6] as List<String>?
+        val isLoading = args[7] as Boolean
         
         val sortedEntities = if (manualOrder != null) {
             monitoredEntities.sortedBy { manualOrder.indexOf(it.portNumber) }
@@ -84,17 +88,26 @@ class DashboardViewModel @Inject constructor(
         DashboardUiState(
             monitoredPorts = monitoredData,
             isRefreshing = isRefreshing,
+            isLoading = isLoading,
             lastUpdated = lastUpdated,
-            shouldAskForLocation = monitoredData.isEmpty() && !hasAskedLocation
+            shouldAskForLocation = monitoredData.isEmpty() && !hasAskedLocation && !isLoading
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = DashboardUiState()
+        initialValue = DashboardUiState(isLoading = true)
     )
 
     init {
-        refresh()
+        viewModelScope.launch {
+            repository.refreshData()
+            _isLoading.value = false
+            
+            val monitoredPorts = repository.getMonitoredPorts().first()
+            if (monitoredPorts.isEmpty()) {
+                addNearestPortsIfEmpty()
+            }
+        }
     }
 
     fun onLocationPermissionHandled() {
@@ -143,9 +156,6 @@ class DashboardViewModel @Inject constructor(
     fun refresh() {
         viewModelScope.launch {
             repository.refreshData()
-            // We only add nearest ports if they are empty and we haven't successfully completed the location flow yet
-            // However, the requirement says "first run" or "empty". 
-            // If they grant it once and delete all ports, we shouldn't ask again if we've already asked.
             val monitoredPorts = repository.getMonitoredPorts().first()
             if (monitoredPorts.isEmpty()) {
                 addNearestPortsIfEmpty()

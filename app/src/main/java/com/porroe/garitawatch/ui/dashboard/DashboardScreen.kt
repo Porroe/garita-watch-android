@@ -119,7 +119,7 @@ fun DashboardScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding),
+                    .padding(top = padding.calculateTopPadding()),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
@@ -131,7 +131,7 @@ fun DashboardScreen(
                 state = pullToRefreshState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding)
+                    .padding(top = padding.calculateTopPadding())
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     if (uiState.monitoredPorts.isEmpty()) {
@@ -147,7 +147,7 @@ fun DashboardScreen(
                         
                         LazyColumn(
                             state = lazyListState,
-                            contentPadding = PaddingValues(16.dp),
+                            contentPadding = PaddingValues(bottom = 16.dp, start = 16.dp, end = 16.dp),
                             verticalArrangement = Arrangement.spacedBy(18.dp),
                             modifier = Modifier.fillMaxSize()
                         ) {

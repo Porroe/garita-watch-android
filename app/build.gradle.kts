@@ -44,6 +44,7 @@ android {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
@@ -81,6 +82,11 @@ dependencies {
 
     // Reorderable
     implementation(libs.reorderable)
+
+    // Location & DataStore
+    implementation(libs.play.services.location)
+    implementation(libs.play.services.coroutines)
+    implementation(libs.datastore.preferences)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -1,5 +1,8 @@
 package com.porroe.garitawatch.ui.dashboard
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -37,6 +40,15 @@ import com.porroe.garitawatch.ui.theme.*
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
+fun getWaitTimeColor(waitTime: Int?): Color {
+    if (waitTime == null) return Color.White
+    return when {
+        waitTime < 20 -> Color(0xFF22C55E)
+        waitTime < 60 -> Color(0xFFEAB308)
+        else -> Color(0xFFEF4444)
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
@@ -49,6 +61,28 @@ fun DashboardScreen(
     val lazyListState = rememberLazyListState()
     val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
         viewModel.movePort(from.index, to.index)
+    }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        viewModel.onLocationPermissionHandled()
+        if (permissions.values.any { it }) {
+            viewModel.refresh()
+        } else {
+            onNavigateToSearch()
+        }
+    }
+
+    LaunchedEffect(uiState.shouldAskForLocation) {
+        if (uiState.shouldAskForLocation) {
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
     }
 
     Scaffold(
@@ -250,16 +284,12 @@ fun PortCard(
                     Text(
                         text = stringResource(R.string.no_lane_data),
                         style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium,
                         color = Color(0xFF94A3B8)
                     )
                 } else {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(18.dp)
-                    ) {
-                        displayedLanes.forEach { (_, composable) ->
-                            composable()
+                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        displayedLanes.forEach { (_, content) ->
+                            content()
                         }
                     }
                 }
@@ -269,148 +299,114 @@ fun PortCard(
 }
 
 @Composable
-fun StatusBadge(isOpen: Boolean) {
-    val color = if (isOpen) Color(0xFF4CAF50) else Color(0xFFF44336)
-    val bgColor = if (isOpen) Color(0xFF1B2E2A) else Color(0xFF2E1B1B)
-    val text = if (isOpen) stringResource(R.string.status_open) else stringResource(R.string.status_closed)
-    
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(13.dp))
-            .background(bgColor)
-            .border(1.dp, color.copy(alpha = 0.5f), RoundedCornerShape(13.dp))
-            .padding(horizontal = 13.dp, vertical = 4.5.dp)
-    ) {
-        Text(
-            text = text.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            color = color,
-            letterSpacing = 0.5.sp
-        )
-    }
-}
-
-@Composable
 fun LaneSummaryRow(
     icon: ImageVector,
     label: String,
-    waitTime: Int?,
+    waitTime: Int,
     isClosed: Boolean
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                modifier = Modifier.size(22.dp),
-                tint = Color.White
+                tint = Color(0xFF94A3B8),
+                modifier = Modifier.size(20.dp)
             )
-            Spacer(modifier = Modifier.width(13.dp))
+            Spacer(modifier = Modifier.width(12.dp))
             Text(
-                text = "$label:",
+                text = label,
                 style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
                 color = Color.White
             )
         }
         
-        val waitText = when {
-            isClosed -> stringResource(R.string.wait_time_na)
-            waitTime == null -> stringResource(R.string.wait_time_na)
-            else -> stringResource(R.string.wait_time_format, waitTime)
+        if (isClosed) {
+            Text(
+                text = stringResource(R.string.closed),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF94A3B8)
+            )
+        } else {
+            val waitColor = getWaitTimeColor(waitTime)
+            
+            Text(
+                text = stringResource(R.string.wait_time_minutes, waitTime),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                color = waitColor
+            )
         }
-        
-        Text(
-            text = waitText,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold,
-            color = if (isClosed) Color.White else getWaitTimeColor(waitTime)
-        )
     }
 }
 
-fun getWaitTimeColor(minutes: Int?): Color {
-    if (minutes == null) return Color.White
-    return when {
-        minutes <= 30 -> WaitTimeGreen
-        minutes <= 60 -> WaitTimeYellow
-        else -> WaitTimeRed
+@Composable
+fun StatusBadge(isOpen: Boolean) {
+    val backgroundColor = if (isOpen) Color(0xFF10B981).copy(alpha = 0.1f) else Color(0xFFEF4444).copy(alpha = 0.1f)
+    val textColor = if (isOpen) Color(0xFF10B981) else Color(0xFFEF4444)
+    val text = if (isOpen) stringResource(R.string.status_open) else stringResource(R.string.status_closed)
+    
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(backgroundColor)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = textColor
+        )
     }
 }
 
 @Composable
 fun EmptyDashboard(onNavigateToSearch: () -> Unit) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = stringResource(R.string.no_ports_monitored),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-            Spacer(modifier = Modifier.height(18.dp))
-            Button(
-                onClick = onNavigateToSearch,
-                shape = RoundedCornerShape(18.dp)
-            ) {
-                Text(stringResource(R.string.explore_ports))
-            }
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun NewUiPreview() {
-    GaritawatchTheme(darkTheme = true) {
-        val andrade = BorderWaitTime(
-            portNumber = "1",
-            portName = "Andrade",
-            crossingName = "",
-            border = "Mexico",
-            portStatus = "Open",
-            lastUpdate = "10:00 AM",
-            passengerLanes = listOf(
-                LaneDetails(LaneType.STANDARD, "", "Open", 10, 5),
-                LaneDetails(LaneType.SENTRI_NEXUS, "", "Open", 45, 2),
-                LaneDetails(LaneType.READY, "", "Open", 65, 3)
-            ),
-            pedestrianLanes = listOf(LaneDetails(LaneType.STANDARD, "", "Open", 0, 2)),
-            commercialLanes = emptyList()
+        Icon(
+            imageVector = Icons.Default.LocationOn,
+            contentDescription = null,
+            modifier = Modifier.size(86.dp),
+            tint = Color(0xFF1E293B)
         )
-
-        val tecate = BorderWaitTime(
-            portNumber = "4",
-            portName = "Tecate",
-            crossingName = "",
-            border = "Mexico",
-            portStatus = "Closed",
-            lastUpdate = "10:00 AM",
-            passengerLanes = listOf(
-                LaneDetails(LaneType.STANDARD, "", "Closed", 0, 0),
-                LaneDetails(LaneType.SENTRI_NEXUS, "", "Closed", 0, 0),
-                LaneDetails(LaneType.READY, "", "Closed", 0, 0)
-            ),
-            pedestrianLanes = listOf(LaneDetails(LaneType.STANDARD, "", "Closed", 0, 0)),
-            commercialLanes = emptyList()
+        Spacer(modifier = Modifier.height(24.dp))
+        Text(
+            text = stringResource(R.string.no_ports_title),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = Color.White
         )
-
-        Surface(color = Color(0xFF0F172A)) {
-            Column(
-                modifier = Modifier.padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(18.dp)
-            ) {
-                PortCard(andrade)
-                PortCard(tecate)
-            }
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = stringResource(R.string.no_ports_description),
+            style = MaterialTheme.typography.bodyLarge,
+            color = Color(0xFF94A3B8),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(35.dp))
+        Button(
+            onClick = onNavigateToSearch,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary
+            ),
+            shape = RoundedCornerShape(16.dp),
+            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
+        ) {
+            Icon(Icons.Default.Add, null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(stringResource(R.string.add_ports))
         }
     }
 }

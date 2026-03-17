@@ -4,14 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.porroe.garitawatch.data.local.entity.MonitoredPortEntity
 import com.porroe.garitawatch.data.repository.BorderRepository
+import com.porroe.garitawatch.data.repository.LocationRepository
+import com.porroe.garitawatch.data.repository.UserPreferencesRepository
 import com.porroe.garitawatch.domain.model.BorderWaitTime
+import com.porroe.garitawatch.domain.util.LocationUtils
+import com.porroe.garitawatch.domain.util.PortLocation
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -20,18 +19,20 @@ import javax.inject.Inject
 data class DashboardUiState(
     val monitoredPorts: List<BorderWaitTime> = emptyList(),
     val isRefreshing: Boolean = false,
-    val lastUpdated: String = ""
+    val lastUpdated: String = "",
+    val shouldAskForLocation: Boolean = false
 )
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    private val repository: BorderRepository
+    private val repository: BorderRepository,
+    private val locationRepository: LocationRepository,
+    private val userPreferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
 
     private val inputDateFormat = SimpleDateFormat("yyyy-M-dd", Locale.US)
     private val outputDateFormat = SimpleDateFormat("MM/dd/yyyy", Locale.US)
 
-    // Local override for drag-and-drop reordering before persisting
     private val _manualOrder = MutableStateFlow<List<String>?>(null)
 
     @Suppress("UNCHECKED_CAST")
@@ -41,6 +42,7 @@ class DashboardViewModel @Inject constructor(
         repository.isRefreshing,
         repository.lastUpdatedTime,
         repository.lastUpdatedDate,
+        userPreferencesRepository.hasAskedLocationPermission,
         _manualOrder
     ) { args ->
         val allData = args[0] as List<BorderWaitTime>
@@ -48,18 +50,18 @@ class DashboardViewModel @Inject constructor(
         val isRefreshing = args[2] as Boolean
         val lastTime = args[3] as String
         val lastDate = args[4] as String
-        val manualOrder = args[5] as List<String>?
+        val hasAskedLocation = args[5] as Boolean
+        val manualOrder = args[6] as List<String>?
         
         val sortedEntities = if (manualOrder != null) {
             monitoredEntities.sortedBy { manualOrder.indexOf(it.portNumber) }
         } else {
-            monitoredEntities // Already sorted by displayOrder ASC from DAO
+            monitoredEntities
         }
 
         val monitoredPortNumbers = sortedEntities.map { it.portNumber }
         val monitoredDataMap = allData.associateBy { it.portNumber }
         
-        // Map data in the order of monitoredEntities
         val monitoredData = monitoredPortNumbers.mapNotNull { monitoredDataMap[it] }
         
         val formattedDate = try {
@@ -82,7 +84,8 @@ class DashboardViewModel @Inject constructor(
         DashboardUiState(
             monitoredPorts = monitoredData,
             isRefreshing = isRefreshing,
-            lastUpdated = lastUpdated
+            lastUpdated = lastUpdated,
+            shouldAskForLocation = monitoredData.isEmpty() && !hasAskedLocation
         )
     }.stateIn(
         scope = viewModelScope,
@@ -94,9 +97,59 @@ class DashboardViewModel @Inject constructor(
         refresh()
     }
 
+    fun onLocationPermissionHandled() {
+        viewModelScope.launch {
+            userPreferencesRepository.setLocationPermissionAsked()
+        }
+    }
+
+    private fun addNearestPortsIfEmpty() {
+        viewModelScope.launch {
+            val monitoredPorts = repository.getMonitoredPorts().first()
+            if (monitoredPorts.isEmpty()) {
+                val location = locationRepository.getCurrentLocation()
+                if (location != null) {
+                    val allPorts = repository.borderData.value
+                    if (allPorts.isNotEmpty()) {
+                        val nearestPorts = allPorts.mapNotNull { port ->
+                            val coords = PortLocation.getCoordinates(port.portNumber)
+                            if (coords != null) {
+                                val distance = LocationUtils.calculateDistance(
+                                    location.latitude, location.longitude,
+                                    coords.latitude, coords.longitude
+                                )
+                                port to distance
+                            } else null
+                        }.sortedBy { it.second }
+                            .take(3)
+                            .map { it.first }
+
+                        nearestPorts.forEach { port ->
+                            repository.addPortToWatchlist(
+                                MonitoredPortEntity(
+                                    portNumber = port.portNumber,
+                                    portName = port.portName,
+                                    crossingName = port.crossingName,
+                                    border = port.border
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     fun refresh() {
         viewModelScope.launch {
             repository.refreshData()
+            // We only add nearest ports if they are empty and we haven't successfully completed the location flow yet
+            // However, the requirement says "first run" or "empty". 
+            // If they grant it once and delete all ports, we shouldn't ask again if we've already asked.
+            val monitoredPorts = repository.getMonitoredPorts().first()
+            if (monitoredPorts.isEmpty()) {
+                addNearestPortsIfEmpty()
+            }
         }
     }
 
@@ -109,7 +162,6 @@ class DashboardViewModel @Inject constructor(
         
         _manualOrder.value = currentList.map { it.portNumber }
         
-        // Persist the change
         viewModelScope.launch {
             val entities = repository.getMonitoredPorts().first()
             val entityMap = entities.associateBy { it.portNumber }

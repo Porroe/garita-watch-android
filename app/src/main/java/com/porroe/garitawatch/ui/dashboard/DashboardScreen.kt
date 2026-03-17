@@ -1,10 +1,14 @@
 package com.porroe.garitawatch.ui.dashboard
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -14,7 +18,10 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -27,15 +34,22 @@ import com.porroe.garitawatch.domain.model.BorderWaitTime
 import com.porroe.garitawatch.domain.model.LaneDetails
 import com.porroe.garitawatch.domain.model.LaneType
 import com.porroe.garitawatch.ui.theme.*
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel,
-    onNavigateToSearch: () -> Unit
+    onNavigateToSearch: () -> Unit,
+    onNavigateToDetail: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val pullToRefreshState = rememberPullToRefreshState()
+    val lazyListState = rememberLazyListState()
+    val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
+        viewModel.movePort(from.index, to.index)
+    }
 
     Scaffold(
         containerColor = Color(0xFF0F172A),
@@ -82,19 +96,34 @@ fun DashboardScreen(
                     Text(
                         text = stringResource(R.string.last_updated, uiState.lastUpdated),
                         style = MaterialTheme.typography.bodySmall,
-                        // Increased font size from 12sp by 15% (~13.8sp)
                         fontSize = 13.8.sp,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                         color = Color(0xFF94A3B8)
                     )
                     
                     LazyColumn(
+                        state = lazyListState,
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(18.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
                         items(uiState.monitoredPorts, key = { it.portNumber }) { port ->
-                            PortCard(port)
+                            ReorderableItem(reorderableState, key = port.portNumber) { isDragging ->
+                                val elevation by animateDpAsState(if (isDragging) 12.dp else 0.dp)
+                                val scale by animateFloatAsState(if (isDragging) 1.02f else 1f)
+                                val alpha by animateFloatAsState(if (isDragging) 0.9f else 1f)
+                                
+                                PortCard(
+                                    port = port,
+                                    modifier = Modifier
+                                        .shadow(elevation, shape = RoundedCornerShape(35.dp))
+                                        .scale(scale)
+                                        .alpha(alpha)
+                                        .longPressDraggableHandle(),
+                                    isDragging = isDragging,
+                                    onClick = { onNavigateToDetail(port.portNumber) }
+                                )
+                            }
                         }
                     }
                 }
@@ -104,14 +133,21 @@ fun DashboardScreen(
 }
 
 @Composable
-fun PortCard(port: BorderWaitTime) {
+fun PortCard(
+    port: BorderWaitTime,
+    modifier: Modifier = Modifier,
+    isDragging: Boolean = false,
+    onClick: () -> Unit = {}
+) {
     val isPortClosed = port.portStatus.equals("Closed", ignoreCase = true)
     
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         shape = RoundedCornerShape(35.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF1A233A)
+            containerColor = if (isDragging) Color(0xFF242F4D) else Color(0xFF1A233A)
         )
     ) {
         Column(modifier = Modifier.padding(26.dp)) {
@@ -136,7 +172,16 @@ fun PortCard(port: BorderWaitTime) {
                     }
                 }
                 
-                StatusBadge(isOpen = !isPortClosed)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    StatusBadge(isOpen = !isPortClosed)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Icon(
+                        imageVector = Icons.Default.DragHandle,
+                        contentDescription = null,
+                        tint = if (isDragging) MaterialTheme.colorScheme.primary else Color(0xFF94A3B8).copy(alpha = 0.5f),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
             
             if (isPortClosed) {
@@ -148,7 +193,6 @@ fun PortCard(port: BorderWaitTime) {
                     color = Color(0xFF94A3B8)
                 )
             } else {
-                // Collect and filter valid lanes
                 val vehicleLane = port.passengerLanes.find { it.type == LaneType.STANDARD }
                 val sentriLane = port.passengerLanes.find { it.type == LaneType.SENTRI_NEXUS }
                 val readyLane = port.passengerLanes.find { it.type == LaneType.READY }
@@ -228,7 +272,6 @@ fun PortCard(port: BorderWaitTime) {
 fun StatusBadge(isOpen: Boolean) {
     val color = if (isOpen) Color(0xFF4CAF50) else Color(0xFFF44336)
     val bgColor = if (isOpen) Color(0xFF1B2E2A) else Color(0xFF2E1B1B)
-    // Changed resource names from open/closed to status_open/status_closed to avoid potential conflicts with Kotlin keywords in R class generation
     val text = if (isOpen) stringResource(R.string.status_open) else stringResource(R.string.status_closed)
     
     Box(

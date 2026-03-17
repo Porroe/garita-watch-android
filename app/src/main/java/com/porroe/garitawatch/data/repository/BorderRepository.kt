@@ -58,11 +58,19 @@ class BorderRepository @Inject constructor(
     }
 
     suspend fun addPortToWatchlist(port: MonitoredPortEntity) {
-        monitoredPortDao.insertPort(port)
+        val maxOrder = monitoredPortDao.getMaxDisplayOrder() ?: -1
+        monitoredPortDao.insertPort(port.copy(displayOrder = maxOrder + 1))
     }
 
     suspend fun removePortFromWatchlist(port: MonitoredPortEntity) {
         monitoredPortDao.deletePort(port)
+    }
+
+    suspend fun updatePortOrder(ports: List<MonitoredPortEntity>) {
+        val updatedPorts = ports.mapIndexed { index, entity ->
+            entity.copy(displayOrder = index)
+        }
+        monitoredPortDao.updatePorts(updatedPorts)
     }
 
     fun isPortMonitored(portNumber: String): Flow<Boolean> {

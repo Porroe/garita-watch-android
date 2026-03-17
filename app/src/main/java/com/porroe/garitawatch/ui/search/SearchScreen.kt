@@ -1,15 +1,13 @@
 package com.porroe.garitawatch.ui.search
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.DirectionsBus
-import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
@@ -36,52 +34,56 @@ fun SearchScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.find_ports), fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+    GaritawatchTheme(darkTheme = true) {
+        Scaffold(
+            containerColor = Color(0xFF0F172A),
+            topBar = {
+                TopAppBar(
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color(0xFF0F172A),
+                        titleContentColor = Color.White,
+                        navigationIconContentColor = Color.White
+                    ),
+                    title = { Text(stringResource(R.string.find_ports), fontWeight = FontWeight.Black) },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                        }
                     }
-                }
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            SearchBar(
-                query = uiState.searchQuery,
-                onQueryChange = viewModel::onSearchQueryChange,
-                modifier = Modifier.padding(16.dp)
-            )
-
-            FilterChips(
-                showVehicle = uiState.showVehicle,
-                onToggleVehicle = viewModel::toggleVehicleFilter,
-                showPedestrian = uiState.showPedestrian,
-                onTogglePedestrian = viewModel::togglePedestrianFilter,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-
-            if (uiState.isLoading) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                )
             }
-
-            LazyColumn(
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxSize()
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
             ) {
-                items(uiState.filteredPorts, key = { it.portNumber }) { port ->
-                    SearchPortItem(
-                        port = port,
-                        isMonitored = uiState.monitoredPortNumbers.contains(port.portNumber),
-                        onToggleMonitored = { viewModel.toggleMonitored(port) }
+                SearchBar(
+                    query = uiState.searchQuery,
+                    onQueryChange = viewModel::onSearchQueryChange,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+
+                if (uiState.isLoading) {
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = Color(0xFF1A233A)
                     )
+                }
+
+                LazyColumn(
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(uiState.filteredPorts, key = { it.portNumber }) { port ->
+                        SearchPortItem(
+                            port = port,
+                            isMonitored = uiState.monitoredPortNumbers.contains(port.portNumber),
+                            onToggleMonitored = { viewModel.toggleMonitored(port) }
+                        )
+                    }
                 }
             }
         }
@@ -98,43 +100,19 @@ fun SearchBar(
         value = query,
         onValueChange = onQueryChange,
         modifier = modifier.fillMaxWidth(),
-        placeholder = { Text(stringResource(R.string.search_placeholder)) },
-        leadingIcon = { Icon(Icons.Default.Search, null) },
-        shape = RoundedCornerShape(16.dp),
+        placeholder = { Text(stringResource(R.string.search_placeholder), color = Color(0xFF94A3B8)) },
+        leadingIcon = { Icon(Icons.Default.Search, null, tint = Color(0xFF94A3B8)) },
+        shape = RoundedCornerShape(24.dp),
         singleLine = true,
         colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = MaterialTheme.colorScheme.surface,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+            focusedContainerColor = Color(0xFF1A233A),
+            unfocusedContainerColor = Color(0xFF1A233A),
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = Color(0xFF2D3748),
+            focusedTextColor = Color.White,
+            unfocusedTextColor = Color.White
         )
     )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun FilterChips(
-    showVehicle: Boolean,
-    onToggleVehicle: () -> Unit,
-    showPedestrian: Boolean,
-    onTogglePedestrian: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        FilterChip(
-            selected = showVehicle,
-            onClick = onToggleVehicle,
-            label = { Text(stringResource(R.string.vehicles)) },
-            leadingIcon = { Icon(Icons.Default.DirectionsBus, null, Modifier.size(18.dp)) }
-        )
-        FilterChip(
-            selected = showPedestrian,
-            onClick = onTogglePedestrian,
-            label = { Text(stringResource(R.string.pedestrians)) },
-            leadingIcon = { Icon(Icons.Default.DirectionsWalk, null, Modifier.size(18.dp)) }
-        )
-    }
 }
 
 @Composable
@@ -144,49 +122,56 @@ fun SearchPortItem(
     onToggleMonitored: () -> Unit
 ) {
     val starColor by animateColorAsState(
-        if (isMonitored) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+        if (isMonitored) MaterialTheme.colorScheme.primary else Color(0xFF94A3B8),
         label = "starColor"
     )
 
-    Surface(
-        onClick = onToggleMonitored,
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onToggleMonitored() },
+        shape = RoundedCornerShape(35.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF1A233A)
+        )
     ) {
         Row(
             modifier = Modifier
-                .padding(16.dp)
+                .padding(26.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = port.portName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
                 )
-                Text(
-                    text = port.crossingName,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                if (port.crossingName.isNotEmpty() && port.crossingName != port.portName) {
+                    Text(
+                        text = port.crossingName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF94A3B8)
+                    )
+                }
             }
             IconButton(onClick = onToggleMonitored) {
                 Icon(
                     imageVector = if (isMonitored) Icons.Default.Star else Icons.Default.StarBorder,
                     contentDescription = "Toggle Watchlist",
-                    tint = starColor
+                    tint = starColor,
+                    modifier = Modifier.size(28.dp)
                 )
             }
         }
     }
 }
 
-@Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
+@Preview(showBackground = true)
 @Composable
 fun SearchScreenPreview() {
-    GaritawatchTheme {
+    GaritawatchTheme(darkTheme = true) {
         val mockPort = BorderWaitTime(
             portNumber = "1",
             portName = "San Ysidro",
@@ -199,12 +184,17 @@ fun SearchScreenPreview() {
             commercialLanes = emptyList()
         )
         
-        Scaffold { padding ->
-            Column(modifier = Modifier.padding(padding)) {
+        Surface(color = Color(0xFF0F172A), modifier = Modifier.fillMaxSize()) {
+            Column {
                 SearchBar("", {}, Modifier.padding(16.dp))
-                FilterChips(true, {}, true, {}, Modifier.padding(horizontal = 16.dp))
-                SearchPortItem(mockPort, true, {})
-                SearchPortItem(mockPort.copy(portNumber = "2", portName = "Otay Mesa"), false, {})
+                Spacer(modifier = Modifier.height(8.dp))
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp)
+                ) {
+                    SearchPortItem(mockPort, isMonitored = true) { }
+                    SearchPortItem(mockPort.copy(portNumber = "2", portName = "Otay Mesa"), isMonitored = false) { }
+                }
             }
         }
     }

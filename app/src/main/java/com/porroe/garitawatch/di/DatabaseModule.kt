@@ -22,7 +22,9 @@ object DatabaseModule {
             context,
             GaritaWatchDatabase::class.java,
             "garitawatch_db"
-        ).build()
+        )
+            .fallbackToDestructiveMigration(dropAllTables = true)
+            .build()
     }
 
     @Provides

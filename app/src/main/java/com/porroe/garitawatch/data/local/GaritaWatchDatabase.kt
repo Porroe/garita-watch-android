@@ -7,7 +7,7 @@ import com.porroe.garitawatch.data.local.entity.MonitoredPortEntity
 
 @Database(
     entities = [MonitoredPortEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class GaritaWatchDatabase : RoomDatabase() {

@@ -9,5 +9,6 @@ data class MonitoredPortEntity(
     val portNumber: String,
     val portName: String,
     val crossingName: String,
-    val border: String
+    val border: String,
+    val displayOrder: Int = 0
 )

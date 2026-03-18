@@ -1,0 +1,422 @@
+package com.garitawatch.app.ui.dashboard
+
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.garitawatch.app.R
+import com.garitawatch.app.domain.model.BorderWaitTime
+import com.garitawatch.app.domain.model.LaneDetails
+import com.garitawatch.app.domain.model.LaneType
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
+
+fun getWaitTimeColor(waitTime: Int?): Color {
+    if (waitTime == null) return Color.White
+    return when {
+        waitTime < 20 -> Color(0xFF22C55E)
+        waitTime < 60 -> Color(0xFFEAB308)
+        else -> Color(0xFFEF4444)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DashboardScreen(
+    viewModel: DashboardViewModel,
+    onNavigateToSearch: () -> Unit,
+    onNavigateToDetail: (String) -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val pullToRefreshState = rememberPullToRefreshState()
+    val lazyListState = rememberLazyListState()
+    val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
+        viewModel.movePort(from.index, to.index)
+    }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        viewModel.onLocationPermissionHandled()
+        if (permissions.values.any { it }) {
+            viewModel.refresh()
+        } else {
+            onNavigateToSearch()
+        }
+    }
+
+    LaunchedEffect(uiState.shouldAskForLocation) {
+        if (uiState.shouldAskForLocation) {
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+    }
+
+    Scaffold(
+        containerColor = Color(0xFF0F172A),
+        topBar = {
+            TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF0F172A),
+                    titleContentColor = Color.White,
+                    actionIconContentColor = Color.White
+                ),
+                title = { Text(stringResource(R.string.app_name), fontWeight = FontWeight.Black) },
+                actions = {
+                    IconButton(onClick = { viewModel.refresh() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.refresh))
+                    }
+                    IconButton(onClick = onNavigateToSearch) {
+                        Icon(Icons.Default.Search, contentDescription = stringResource(R.string.find_ports))
+                    }
+                }
+            )
+        },
+        floatingActionButton = {
+            if (uiState.monitoredPorts.isEmpty() && !uiState.isLoading) {
+                ExtendedFloatingActionButton(
+                    onClick = onNavigateToSearch,
+                    icon = { Icon(Icons.Default.Add, null) },
+                    text = { Text(stringResource(R.string.add_ports)) }
+                )
+            }
+        }
+    ) { padding ->
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = padding.calculateTopPadding()),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+            }
+        } else {
+            PullToRefreshBox(
+                isRefreshing = uiState.isRefreshing,
+                onRefresh = { viewModel.refresh() },
+                state = pullToRefreshState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = padding.calculateTopPadding())
+            ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    if (uiState.monitoredPorts.isEmpty()) {
+                        EmptyDashboard(onNavigateToSearch)
+                    } else {
+                        Text(
+                            text = stringResource(R.string.last_updated, uiState.lastUpdated),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontSize = 13.8.sp,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            color = Color(0xFF94A3B8)
+                        )
+                        
+                        LazyColumn(
+                            state = lazyListState,
+                            contentPadding = PaddingValues(bottom = 16.dp, start = 16.dp, end = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(18.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(uiState.monitoredPorts, key = { it.portNumber }) { port ->
+                                ReorderableItem(reorderableState, key = port.portNumber) { isDragging ->
+                                    val elevation by animateDpAsState(if (isDragging) 12.dp else 0.dp)
+                                    val scale by animateFloatAsState(if (isDragging) 1.02f else 1f)
+                                    val alpha by animateFloatAsState(if (isDragging) 0.9f else 1f)
+                                    
+                                    PortCard(
+                                        port = port,
+                                        modifier = Modifier
+                                            .shadow(elevation, shape = RoundedCornerShape(35.dp))
+                                            .scale(scale)
+                                            .alpha(alpha)
+                                            .longPressDraggableHandle(),
+                                        isDragging = isDragging,
+                                        onClick = { onNavigateToDetail(port.portNumber) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PortCard(
+    port: BorderWaitTime,
+    modifier: Modifier = Modifier,
+    isDragging: Boolean = false,
+    onClick: () -> Unit = {}
+) {
+    val isPortClosed = port.portStatus.equals("Closed", ignoreCase = true)
+    
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(35.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isDragging) Color(0xFF242F4D) else Color(0xFF1A233A)
+        )
+    ) {
+        Column(modifier = Modifier.padding(26.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = port.portName,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    if (port.crossingName.isNotEmpty() && port.crossingName != port.portName) {
+                        Text(
+                            text = port.crossingName,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color(0xFF94A3B8)
+                        )
+                    }
+                }
+                
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    StatusBadge(isOpen = !isPortClosed)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Icon(
+                        imageVector = Icons.Default.DragHandle,
+                        contentDescription = null,
+                        tint = if (isDragging) MaterialTheme.colorScheme.primary else Color(0xFF94A3B8).copy(alpha = 0.5f),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+            
+            if (isPortClosed) {
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = stringResource(R.string.port_closed),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF94A3B8)
+                )
+            } else {
+                val vehicleLane = port.passengerLanes.find { it.type == LaneType.STANDARD }
+                val sentriLane = port.passengerLanes.find { it.type == LaneType.SENTRI_NEXUS }
+                val readyLane = port.passengerLanes.find { it.type == LaneType.READY }
+                val pedestrianLane = port.pedestrianLanes.find { it.type == LaneType.STANDARD }
+
+                val displayedLanes = mutableListOf<Pair<LaneDetails, @Composable () -> Unit>>()
+                
+                vehicleLane?.delayMinutes?.let { waitTime ->
+                    displayedLanes.add(vehicleLane to {
+                        LaneSummaryRow(
+                            icon = Icons.Default.DirectionsCar,
+                            label = stringResource(R.string.vehicle_label),
+                            waitTime = waitTime,
+                            isClosed = vehicleLane.operationalStatus.equals("Closed", ignoreCase = true)
+                        )
+                    })
+                }
+                
+                sentriLane?.delayMinutes?.let { waitTime ->
+                    displayedLanes.add(sentriLane to {
+                        LaneSummaryRow(
+                            icon = Icons.Default.Verified,
+                            label = "SENTRI",
+                            waitTime = waitTime,
+                            isClosed = sentriLane.operationalStatus.equals("Closed", ignoreCase = true)
+                        )
+                    })
+                }
+                
+                readyLane?.delayMinutes?.let { waitTime ->
+                    displayedLanes.add(readyLane to {
+                        LaneSummaryRow(
+                            icon = Icons.Default.Bolt,
+                            label = "READY",
+                            waitTime = waitTime,
+                            isClosed = readyLane.operationalStatus.equals("Closed", ignoreCase = true)
+                        )
+                    })
+                }
+                
+                pedestrianLane?.delayMinutes?.let { waitTime ->
+                    displayedLanes.add(pedestrianLane to {
+                        LaneSummaryRow(
+                            icon = Icons.Default.DirectionsWalk,
+                            label = stringResource(R.string.pedestrian_label),
+                            waitTime = waitTime,
+                            isClosed = pedestrianLane.operationalStatus.equals("Closed", ignoreCase = true)
+                        )
+                    })
+                }
+
+                Spacer(modifier = Modifier.height(35.dp))
+                
+                if (displayedLanes.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.no_lane_data),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color(0xFF94A3B8)
+                    )
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        displayedLanes.forEach { (_, content) ->
+                            content()
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun LaneSummaryRow(
+    icon: ImageVector,
+    label: String,
+    waitTime: Int,
+    isClosed: Boolean
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Color(0xFF94A3B8),
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color.White
+            )
+        }
+        
+        if (isClosed) {
+            Text(
+                text = stringResource(R.string.closed),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF94A3B8)
+            )
+        } else {
+            val waitColor = getWaitTimeColor(waitTime)
+            
+            Text(
+                text = stringResource(R.string.wait_time_minutes, waitTime),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                color = waitColor
+            )
+        }
+    }
+}
+
+@Composable
+fun StatusBadge(isOpen: Boolean) {
+    val backgroundColor = if (isOpen) Color(0xFF10B981).copy(alpha = 0.1f) else Color(0xFFEF4444).copy(alpha = 0.1f)
+    val textColor = if (isOpen) Color(0xFF10B981) else Color(0xFFEF4444)
+    val text = if (isOpen) stringResource(R.string.status_open) else stringResource(R.string.status_closed)
+    
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(backgroundColor)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = textColor
+        )
+    }
+}
+
+@Composable
+fun EmptyDashboard(onNavigateToSearch: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.LocationOn,
+            contentDescription = null,
+            modifier = Modifier.size(86.dp),
+            tint = Color(0xFF1E293B)
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        Text(
+            text = stringResource(R.string.no_ports_title),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = Color.White
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = stringResource(R.string.no_ports_description),
+            style = MaterialTheme.typography.bodyLarge,
+            color = Color(0xFF94A3B8),
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(35.dp))
+        Button(
+            onClick = onNavigateToSearch,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary
+            ),
+            shape = RoundedCornerShape(16.dp),
+            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
+        ) {
+            Icon(Icons.Default.Add, null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(stringResource(R.string.add_ports))
+        }
+    }
+}

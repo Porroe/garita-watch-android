@@ -5,14 +5,15 @@ plugins {
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.ksp)
     kotlin("kapt")
+    id("com.google.gms.google-services")
 }
 
 android {
-    namespace = "com.porroe.garitawatch"
+    namespace = "com.garitawatch.app"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.porroe.garitawatch"
+        applicationId = "com.garitawatch.app"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
@@ -95,4 +96,7 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    implementation(platform("com.google.firebase:firebase-bom:34.10.0"))
+    implementation("com.google.firebase:firebase-analytics")
 }

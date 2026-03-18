@@ -3,21 +3,26 @@ package com.garitawatch.app.ui.detail
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.garitawatch.app.data.local.entity.AlertEntity
 import com.garitawatch.app.data.local.entity.MonitoredPortEntity
+import com.garitawatch.app.data.repository.AlertRepository
 import com.garitawatch.app.data.repository.BorderRepository
 import com.garitawatch.app.domain.analytics.AnalyticsEvents
 import com.garitawatch.app.domain.analytics.AnalyticsParams
 import com.garitawatch.app.domain.analytics.AnalyticsProvider
 import com.garitawatch.app.domain.analytics.AnalyticsScreens
 import com.garitawatch.app.domain.model.BorderWaitTime
+import com.garitawatch.app.domain.model.LaneType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 @HiltViewModel
 class PortDetailViewModel @Inject constructor(
     private val repository: BorderRepository,
+    private val alertRepository: AlertRepository,
     private val analytics: AnalyticsProvider,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -74,6 +79,29 @@ class PortDetailViewModel @Inject constructor(
                     )
                 )
             }
+        }
+    }
+
+    fun createAlert(crossingType: String, laneTypes: List<LaneType>, threshold: Int, durationDays: Int) {
+        viewModelScope.launch {
+            val currentPort = port.value ?: return@launch
+            val now = System.currentTimeMillis()
+            val alert = AlertEntity(
+                portNumber = currentPort.portNumber,
+                portName = "${currentPort.portName} - ${currentPort.crossingName}",
+                crossingType = crossingType,
+                laneTypes = laneTypes,
+                thresholdMinutes = threshold,
+                durationDays = durationDays,
+                createdAt = now,
+                expiresAt = now + TimeUnit.DAYS.toMillis(durationDays.toLong())
+            )
+            alertRepository.insertAlert(alert)
+            analytics.logEvent("create_alert", mapOf(
+                "port_name" to currentPort.portName,
+                "crossing_type" to crossingType,
+                "threshold" to threshold
+            ))
         }
     }
 }

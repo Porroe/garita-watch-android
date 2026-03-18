@@ -9,10 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -44,7 +41,8 @@ fun PortDetailScreen(
         port = port,
         isMonitored = isMonitored,
         onNavigateBack = onNavigateBack,
-        onToggleFavorite = viewModel::toggleFavorite
+        onToggleFavorite = viewModel::toggleFavorite,
+        onCreateAlert = viewModel::createAlert
     )
 }
 
@@ -54,9 +52,12 @@ private fun PortDetailScreen(
     port: BorderWaitTime?,
     isMonitored: Boolean,
     onNavigateBack: () -> Unit,
-    onToggleFavorite: () -> Unit
+    onToggleFavorite: () -> Unit,
+    onCreateAlert: (String, List<LaneType>, Int, Int) -> Unit
 ) {
     val context = LocalContext.current
+    var showAlertDialog by remember { mutableStateOf(false) }
+    
     val titleText = remember(port) {
         port?.let {
             if (it.crossingName.isNotEmpty() && it.crossingName != it.portName) {
@@ -92,6 +93,10 @@ private fun PortDetailScreen(
                 },
                 actions = {
                     if (port != null) {
+                        IconButton(onClick = { showAlertDialog = true }) {
+                            Icon(Icons.Default.NotificationsActive, contentDescription = "Set Alert")
+                        }
+                        
                         val mapsIntentUri = PortNavigation.getMapsIntent(port.portNumber)
                         if (mapsIntentUri != null) {
                             IconButton(onClick = {
@@ -159,6 +164,16 @@ private fun PortDetailScreen(
                 item {
                     Spacer(modifier = Modifier.height(16.dp))
                 }
+            }
+
+            if (showAlertDialog) {
+                AlertConfigurationDrawer(
+                    port = portData,
+                    onDismiss = { showAlertDialog = false },
+                    onConfirm = { crossingType, laneTypes, threshold, duration ->
+                        onCreateAlert(crossingType, laneTypes, threshold, duration)
+                    }
+                )
             }
         } ?: run {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -366,7 +381,8 @@ fun PortDetailScreenPreview() {
             port = samplePort,
             isMonitored = true,
             onNavigateBack = {},
-            onToggleFavorite = {}
+            onToggleFavorite = {},
+            onCreateAlert = { _, _, _, _ -> }
         )
     }
 }

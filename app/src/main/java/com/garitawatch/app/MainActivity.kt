@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -28,6 +29,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.garitawatch.app.data.fcm.FcmTokenManager
 import com.garitawatch.app.ui.alerts.AlertsScreen
 import com.garitawatch.app.ui.alerts.AlertsViewModel
 import com.garitawatch.app.ui.dashboard.DashboardScreen
@@ -40,6 +42,8 @@ import com.garitawatch.app.ui.search.SearchScreen
 import com.garitawatch.app.ui.search.SearchViewModel
 import com.garitawatch.app.ui.theme.GaritawatchTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
     object Home : Screen("dashboard", "Home", Icons.Default.Home)
@@ -49,10 +53,19 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var fcmTokenManager: FcmTokenManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        lifecycleScope.launch {
+            fcmTokenManager.refreshTokenIfNeeded()
+        }
+
         setContent {
             GaritawatchTheme {
                 MainContent()
@@ -132,7 +145,9 @@ fun MainContent() {
             }
             composable(Screen.Alerts.route) {
                 val viewModel: AlertsViewModel = hiltViewModel()
-                AlertsScreen(viewModel = viewModel)
+                AlertsScreen(
+                    viewModel = viewModel
+                )
             }
             composable(Screen.Premium.route) {
                 val viewModel: PremiumViewModel = hiltViewModel()

@@ -3,6 +3,7 @@ package com.garitawatch.app.di
 import android.content.Context
 import androidx.room.Room
 import com.garitawatch.app.data.local.GaritaWatchDatabase
+import com.garitawatch.app.data.local.dao.AlertDao
 import com.garitawatch.app.data.local.dao.MonitoredPortDao
 import dagger.Module
 import dagger.Provides
@@ -30,5 +31,10 @@ object DatabaseModule {
     @Provides
     fun provideMonitoredPortDao(database: GaritaWatchDatabase): MonitoredPortDao {
         return database.monitoredPortDao()
+    }
+
+    @Provides
+    fun provideAlertDao(database: GaritaWatchDatabase): AlertDao {
+        return database.alertDao()
     }
 }

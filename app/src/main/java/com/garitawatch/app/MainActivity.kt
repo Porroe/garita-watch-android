@@ -29,11 +29,13 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.garitawatch.app.ui.alerts.AlertsScreen
+import com.garitawatch.app.ui.alerts.AlertsViewModel
 import com.garitawatch.app.ui.dashboard.DashboardScreen
 import com.garitawatch.app.ui.dashboard.DashboardViewModel
 import com.garitawatch.app.ui.detail.PortDetailScreen
 import com.garitawatch.app.ui.detail.PortDetailViewModel
 import com.garitawatch.app.ui.premium.PremiumScreen
+import com.garitawatch.app.ui.premium.PremiumViewModel
 import com.garitawatch.app.ui.search.SearchScreen
 import com.garitawatch.app.ui.search.SearchViewModel
 import com.garitawatch.app.ui.theme.GaritawatchTheme
@@ -129,10 +131,12 @@ fun MainContent() {
                 )
             }
             composable(Screen.Alerts.route) {
-                AlertsScreen()
+                val viewModel: AlertsViewModel = hiltViewModel()
+                AlertsScreen(viewModel = viewModel)
             }
             composable(Screen.Premium.route) {
-                PremiumScreen()
+                val viewModel: PremiumViewModel = hiltViewModel()
+                PremiumScreen(viewModel = viewModel)
             }
             composable("search") {
                 val viewModel: SearchViewModel = hiltViewModel()

@@ -12,7 +12,9 @@ import androidx.compose.ui.text.font.FontWeight
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AlertsScreen() {
+fun AlertsScreen(
+    viewModel: AlertsViewModel
+) {
     Scaffold(
         containerColor = Color(0xFF0F172A),
         topBar = {

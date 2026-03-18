@@ -4,6 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.garitawatch.app.data.local.entity.MonitoredPortEntity
 import com.garitawatch.app.data.repository.BorderRepository
+import com.garitawatch.app.domain.analytics.AnalyticsEvents
+import com.garitawatch.app.domain.analytics.AnalyticsParams
+import com.garitawatch.app.domain.analytics.AnalyticsProvider
+import com.garitawatch.app.domain.analytics.AnalyticsScreens
 import com.garitawatch.app.domain.model.BorderWaitTime
 import com.garitawatch.app.domain.model.portSearchIndex
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,7 +27,8 @@ data class SearchUiState(
 
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    private val repository: BorderRepository
+    private val repository: BorderRepository,
+    private val analytics: AnalyticsProvider
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -92,6 +97,7 @@ class SearchViewModel @Inject constructor(
         if (repository.borderData.value.isEmpty()) {
             refresh()
         }
+        analytics.trackScreenView(AnalyticsScreens.SEARCH)
     }
 
     fun refresh() {
@@ -104,14 +110,6 @@ class SearchViewModel @Inject constructor(
         _searchQuery.value = query
     }
 
-    fun toggleVehicleFilter() {
-        _showVehicle.value = !_showVehicle.value
-    }
-
-    fun togglePedestrianFilter() {
-        _showPedestrian.value = !_showPedestrian.value
-    }
-
     fun toggleMonitored(port: BorderWaitTime) {
         viewModelScope.launch {
             val isCurrentlyMonitored = uiState.value.monitoredPortNumbers.contains(port.portNumber)
@@ -119,9 +117,17 @@ class SearchViewModel @Inject constructor(
                 repository.removePortFromWatchlist(
                     MonitoredPortEntity(port.portNumber, port.portName, port.crossingName, port.border)
                 )
+                analytics.logEvent(
+                    AnalyticsEvents.REMOVE_FAVORITE, 
+                    mapOf(AnalyticsParams.PORT_NAME to port.portName, AnalyticsParams.PORT_NUMBER to port.portNumber)
+                )
             } else {
                 repository.addPortToWatchlist(
                     MonitoredPortEntity(port.portNumber, port.portName, port.crossingName, port.border)
+                )
+                analytics.logEvent(
+                    AnalyticsEvents.ADD_FAVORITE, 
+                    mapOf(AnalyticsParams.PORT_NAME to port.portName, AnalyticsParams.PORT_NUMBER to port.portNumber)
                 )
             }
         }

@@ -6,6 +6,9 @@ import com.garitawatch.app.data.local.entity.MonitoredPortEntity
 import com.garitawatch.app.data.repository.BorderRepository
 import com.garitawatch.app.data.repository.LocationRepository
 import com.garitawatch.app.data.repository.UserPreferencesRepository
+import com.garitawatch.app.domain.analytics.AnalyticsEvents
+import com.garitawatch.app.domain.analytics.AnalyticsProvider
+import com.garitawatch.app.domain.analytics.AnalyticsScreens
 import com.garitawatch.app.domain.model.BorderWaitTime
 import com.garitawatch.app.domain.util.LocationUtils
 import com.garitawatch.app.domain.util.PortLocation
@@ -15,7 +18,6 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
 import javax.inject.Inject
-import kotlin.text.get
 
 data class DashboardUiState(
     val monitoredPorts: List<BorderWaitTime> = emptyList(),
@@ -29,7 +31,8 @@ data class DashboardUiState(
 class DashboardViewModel @Inject constructor(
     private val repository: BorderRepository,
     private val locationRepository: LocationRepository,
-    private val userPreferencesRepository: UserPreferencesRepository
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val analytics: AnalyticsProvider
 ) : ViewModel() {
 
     private val inputDateFormat = SimpleDateFormat("yyyy-M-dd", Locale.US)
@@ -109,6 +112,7 @@ class DashboardViewModel @Inject constructor(
                 addNearestPortsIfEmpty()
             }
         }
+        analytics.trackScreenView(AnalyticsScreens.DASHBOARD)
     }
 
     fun onLocationPermissionHandled() {
@@ -162,6 +166,7 @@ class DashboardViewModel @Inject constructor(
                 addNearestPortsIfEmpty()
             }
         }
+        analytics.logEvent(AnalyticsEvents.MANUAL_REFRESH)
     }
 
     fun movePort(fromIndex: Int, toIndex: Int) {
@@ -180,5 +185,6 @@ class DashboardViewModel @Inject constructor(
             repository.updatePortOrder(updatedEntities)
             _manualOrder.value = null
         }
+        analytics.logEvent(AnalyticsEvents.REORDER_PORTS)
     }
 }

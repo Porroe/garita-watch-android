@@ -1,6 +1,8 @@
 package com.garitawatch.app
 
+import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -13,6 +15,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -21,6 +24,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -68,15 +72,37 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             GaritawatchTheme {
-                MainContent()
+                val navController = rememberNavController()
+                
+                // Handle intent when app is already running
+                LaunchedEffect(intent) {
+                    handleIntent(intent, navController)
+                }
+
+                MainContent(navController)
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?, navController: NavController) {
+        val portNumber = intent?.getStringExtra("port_number")
+        if (portNumber != null) {
+            Log.d("MainActivity", "Navigating to port detail from notification: $portNumber")
+            navController.navigate("detail/$portNumber") {
+                // Avoid multiple copies of the same destination when re-launching from notification
+                launchSingleTop = true
             }
         }
     }
 }
 
 @Composable
-fun MainContent() {
-    val navController = rememberNavController()
+fun MainContent(navController: androidx.navigation.NavHostController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 

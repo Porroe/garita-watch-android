@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.ksp)
     kotlin("kapt")
@@ -20,6 +21,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        
+        buildConfigField("String", "SUPABASE_URL", "\"https://ymlunuhplrcdemewtyxf.supabase.co/\"")
+        buildConfigField("String", "SUPABASE_KEY", "\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltbHVudWhwbHJjZGVtZXd0eXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDUxNzgsImV4cCI6MjA4NzQ4MTE3OH0.53eYzkPUVy26rDfsIhuew34MzBRMSiAi1LwX5ku-PEo\"")
     }
 
     buildTypes {
@@ -40,6 +44,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -88,6 +93,15 @@ dependencies {
     implementation(libs.play.services.location)
     implementation(libs.play.services.coroutines)
     implementation(libs.datastore.preferences)
+
+    // Supabase
+    implementation(libs.supabase.postgrest)
+    implementation(libs.supabase.auth)
+    implementation(libs.supabase.realtime)
+    implementation(libs.ktor.client.okhttp)
+    
+    // Kotlin Serialization
+    implementation(libs.kotlinx.serialization.json)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

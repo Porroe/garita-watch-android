@@ -2,6 +2,7 @@ package com.garitawatch.app.ui.detail
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,6 +37,18 @@ fun PortDetailScreen(
 ) {
     val port by viewModel.port.collectAsState()
     val isMonitored by viewModel.isMonitored.collectAsState()
+    val alertStatus by viewModel.alertCreationStatus.collectAsState(initial = null)
+    val context = LocalContext.current
+
+    LaunchedEffect(alertStatus) {
+        alertStatus?.let { result ->
+            if (result.isSuccess) {
+                Toast.makeText(context, "Alert created successfully!", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(context, "Failed to create alert: ${result.exceptionOrNull()?.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 
     PortDetailScreen(
         port = port,

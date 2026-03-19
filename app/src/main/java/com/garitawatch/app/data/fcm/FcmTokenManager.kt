@@ -1,6 +1,7 @@
 package com.garitawatch.app.data.fcm
 
 import android.util.Log
+import com.garitawatch.app.data.remote.SupabaseManager
 import com.garitawatch.app.data.repository.FcmRepository
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.flow.first
@@ -12,7 +13,8 @@ import javax.inject.Singleton
 @Singleton
 class FcmTokenManager @Inject constructor(
     private val firebaseMessaging: FirebaseMessaging,
-    private val fcmRepository: FcmRepository
+    private val fcmRepository: FcmRepository,
+    private val supabaseManager: SupabaseManager
 ) {
     companion object {
         private const val TAG = "FcmTokenManager"
@@ -33,7 +35,8 @@ class FcmTokenManager @Inject constructor(
                 Log.d(TAG, "Token is missing or expired. Fetching new token...")
                 fetchAndSaveToken()
             } else {
-                Log.d(TAG, "Stored token is still valid.")
+                Log.d(TAG, "Stored token is still valid. Ensuring sync with Supabase...")
+                supabaseManager.syncFcmToken(currentToken)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error checking/refreshing token", e)
@@ -52,9 +55,9 @@ class FcmTokenManager @Inject constructor(
     suspend fun updateStoredToken(newToken: String) {
         val oldToken = fcmRepository.fcmToken.first()
         if (newToken != oldToken) {
-            Log.d(TAG, "New token received, updating storage.")
+            Log.d(TAG, "New token received, updating storage and syncing with Supabase.")
             fcmRepository.saveToken(newToken, System.currentTimeMillis())
-            // Here you would trigger a sync to your backend if applicable
+            supabaseManager.syncFcmToken(newToken)
         } else {
             Log.d(TAG, "Token hasn't changed.")
         }
